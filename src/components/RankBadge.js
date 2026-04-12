@@ -1,0 +1,80 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { rankColors } from '../theme/colors';
+
+const RANK_LABELS = {
+  E: 'E',
+  D: 'D',
+  C: 'C',
+  B: 'B',
+  A: 'A',
+  S: 'S',
+};
+
+export default function RankBadge({ rank = 'E', size = 'medium', showClass = true }) {
+  const color = rankColors[rank] || rankColors.E;
+
+  const sizeStyles = {
+    small: { width: 32, height: 32, borderRadius: 2, borderWidth: 1.5 },
+    medium: { width: 52, height: 52, borderRadius: 3, borderWidth: 2 },
+    large: { width: 80, height: 80, borderRadius: 4, borderWidth: 2.5 },
+    xlarge: { width: 120, height: 120, borderRadius: 6, borderWidth: 3 },
+  };
+
+  const textSizes = {
+    small: 14,
+    medium: 24,
+    large: 36,
+    xlarge: 56,
+  };
+
+  const labelSizes = {
+    small: 6,
+    medium: 8,
+    large: 10,
+    xlarge: 12,
+  };
+
+  return (
+    <View
+      style={[
+        styles.badge,
+        sizeStyles[size],
+        {
+          borderColor: color,
+          shadowColor: color,
+          backgroundColor: color + '22',
+        },
+      ]}
+    >
+      <Text style={[styles.rankText, { color, fontSize: textSizes[size] }]}>
+        {RANK_LABELS[rank]}
+      </Text>
+      {showClass && size !== 'small' && (
+        <Text style={[styles.classLabel, { color: color + 'bb', fontSize: labelSizes[size] }]}>
+          CLASS
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  badge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+    shadowOpacity: 0.8,
+    elevation: 8,
+  },
+  rankText: {
+    fontFamily: 'Rajdhani_700Bold',
+    letterSpacing: 2,
+  },
+  classLabel: {
+    fontFamily: 'Rajdhani_600SemiBold',
+    letterSpacing: 2,
+    marginTop: -4,
+  },
+});

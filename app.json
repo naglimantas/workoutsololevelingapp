@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Shadow Monarch",
+    "slug": "shadow-monarch",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0a0a",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.shadowmonarch.hunter",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.shadowmonarch.hunter"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#4400ff",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "shadow-monarch-hunter"
+      }
+    }
+  }
+}
