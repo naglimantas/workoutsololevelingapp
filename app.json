@@ -12,25 +12,13 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.shadowmonarch.hunter",
-      "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
-      }
+      "bundleIdentifier": "com.shadowmonarch.hunter"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.shadowmonarch.hunter"
-    },
-    "plugins": [
-      [
-        "expo-notifications",
-        {
-          "color": "#4400ff",
-          "sounds": []
-        }
-      ]
-    ],
+    }
   }
 }
