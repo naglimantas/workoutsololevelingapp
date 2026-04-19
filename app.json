@@ -19,6 +19,9 @@
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.shadowmonarch.hunter"
-    }
+    },
+    "plugins": [
+      ["expo-build-properties", { "android": { "kotlinVersion": "1.9.25" } }]
+    ]
   }
 }
