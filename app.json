@@ -32,10 +32,5 @@
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "shadow-monarch-hunter"
-      }
-    }
   }
 }
