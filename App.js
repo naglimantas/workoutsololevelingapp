@@ -15,18 +15,23 @@ import { getHunterProfile } from './src/utils/storage';
 import { initNotifications } from './src/utils/notifications';
 import { colors } from './src/theme/colors';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
   const [appReady, setAppReady] = useState(false);
   const [isNewUser, setIsNewUser] = useState(true);
+  const [fontError, setFontError] = useState(false);
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontsError] = useFonts({
     Rajdhani_400Regular,
     Rajdhani_500Medium,
     Rajdhani_600SemiBold,
     Rajdhani_700Bold,
   });
+
+  useEffect(() => {
+    if (fontsError) setFontError(true);
+  }, [fontsError]);
 
   useEffect(() => {
     async function prepare() {
@@ -44,12 +49,12 @@ export default function App() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appReady && fontsLoaded) {
-      await SplashScreen.hideAsync();
+    if (appReady && (fontsLoaded || fontError)) {
+      await SplashScreen.hideAsync().catch(() => {});
     }
-  }, [appReady, fontsLoaded]);
+  }, [appReady, fontsLoaded, fontError]);
 
-  if (!appReady || !fontsLoaded) {
+  if (!appReady || (!fontsLoaded && !fontError)) {
     return null;
   }
 
