@@ -5,15 +5,13 @@ const fs = require('fs');
 const SUPPRESS_MARKER = 'suppressKotlinVersionCompatibilityCheck';
 const PATCH_BLOCK = `
 
-allprojects { project ->
-    project.afterEvaluate {
-        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions {
-                freeCompilerArgs += [
-                    "-P",
-                    "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24"
-                ]
-            }
+allprojects {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            freeCompilerArgs += [
+                "-P",
+                "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24"
+            ]
         }
     }
 }
