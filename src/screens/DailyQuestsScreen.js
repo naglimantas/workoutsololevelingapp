@@ -31,7 +31,7 @@ import {
   EXERCISE_TYPES,
   UNIT_OPTIONS,
 } from '../utils/questData';
-import { XP_REWARDS, checkRankUp, STAT_REWARDS } from '../utils/xpSystem';
+import { XP_REWARDS, checkRankUp, STAT_REWARDS, getRankForXP } from '../utils/xpSystem';
 
 export default function DailyQuestsScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -57,8 +57,7 @@ export default function DailyQuestsScreen({ navigation }) {
     const todayKey = getTodayKey();
     let data = await getDailyQuests(todayKey);
     if (!data || !data.quests) {
-      // Generate new quests for today
-      const count = Math.floor(Math.random() * 3) + 3; // 3-5 quests
+      const count = Math.floor(Math.random() * 3) + 3;
       const newQuests = getRandomQuests(count, p?.fitnessLevel);
       data = { date: todayKey, quests: newQuests, allCompleted: false };
       await saveDailyQuests(data, todayKey);
@@ -78,10 +77,8 @@ export default function DailyQuestsScreen({ navigation }) {
     await saveDailyQuests({ date: todayKey, quests: updated, allCompleted }, todayKey);
 
     if (!quest.completed) {
-      // Quest was just completed — award XP
       await awardQuestXP(quest, updated, allCompleted);
     } else {
-      // Deduct XP if un-completing
       const p = await getHunterProfile();
       if (p) {
         p.xp = Math.max(0, p.xp - quest.xp);
@@ -98,30 +95,24 @@ export default function DailyQuestsScreen({ navigation }) {
     const oldXP = p.xp;
     p.xp += quest.xp;
 
-    // Award stat points
     const statType = quest.statType || 'quest';
     const gains = STAT_REWARDS[statType] || STAT_REWARDS.quest;
     for (const [stat, val] of Object.entries(gains)) {
       if (p.stats[stat] !== undefined) p.stats[stat] += val;
     }
-    p.stats.intelligence += 1; // bonus for completing any quest
+    p.stats.intelligence += 1;
 
-    // All quests bonus
     if (allCompleted) {
       p.xp += XP_REWARDS.allQuestsBonus;
       p.lastQuestDate = getTodayKey();
-      // Update streak
-      const lastDate = p.lastQuestDate;
-      // Simple streak: increment if completed today
       p.streak = (p.streak || 0) + 1;
     }
 
     const rankCheck = checkRankUp(oldXP, p.xp);
-    p.rank = require('../utils/xpSystem').getRankForXP(p.xp);
+    p.rank = getRankForXP(p.xp);
     await saveHunterProfile(p);
     setProfile({ ...p });
 
-    // Success animation
     Animated.sequence([
       Animated.timing(successAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.timing(successAnim, { toValue: 0, duration: 600, delay: 800, useNativeDriver: true }),
@@ -163,7 +154,6 @@ export default function DailyQuestsScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.screenTag}>[ DAILY QUEST SYSTEM ]</Text>
 
-          {/* Penalty Banner */}
           {hasPenalty && (
             <SystemPanel penalty style={styles.penaltyBanner}>
               <Text style={styles.penaltyTitle}>⚠ PENALTY QUEST ACTIVE</Text>
@@ -171,7 +161,6 @@ export default function DailyQuestsScreen({ navigation }) {
             </SystemPanel>
           )}
 
-          {/* Progress Overview */}
           <SystemPanel style={styles.progressPanel} glow={completedCount === totalCount && totalCount > 0}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressTitle}>TODAY'S MISSIONS</Text>
@@ -193,17 +182,14 @@ export default function DailyQuestsScreen({ navigation }) {
             )}
           </SystemPanel>
 
-          {/* Success Flash */}
           <Animated.View style={[styles.successFlash, { opacity: successAnim }]}>
             <Text style={styles.successText}>+XP AWARDED</Text>
           </Animated.View>
 
-          {/* Quest List */}
           {quests.map(quest => (
             <QuestCard key={quest.id} quest={quest} onToggle={handleToggleQuest} />
           ))}
 
-          {/* Add Quest */}
           <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
             <Text style={styles.addBtnText}>+ ADD CUSTOM QUEST</Text>
           </TouchableOpacity>
@@ -215,7 +201,6 @@ export default function DailyQuestsScreen({ navigation }) {
           </View>
         </ScrollView>
 
-        {/* Add Quest Modal */}
         <Modal visible={showAddModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalPanel}>
@@ -325,7 +310,6 @@ const styles = StyleSheet.create({
   infoBox: { alignItems: 'center', paddingHorizontal: 20 },
   infoText: { fontFamily: 'Rajdhani_400Regular', fontSize: 11, color: colors.textDim, textAlign: 'center', letterSpacing: 0.5, lineHeight: 17 },
 
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 },
   modalPanel: { backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.electricBlue, padding: 20, borderRadius: 2 },
   modalTitle: { fontFamily: 'Rajdhani_700Bold', fontSize: 14, color: colors.electricBlue, letterSpacing: 3, textAlign: 'center', marginBottom: 16 },
