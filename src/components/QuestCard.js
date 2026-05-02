@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { colors } from '../theme/colors';
 
-export default function QuestCard({ quest, onToggle, onProgressUpdate, readonly = false }) {
+export default function QuestCard({ quest, onToggle, onLongPress, onProgressUpdate, readonly = false }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   function handlePress() {
@@ -12,6 +12,11 @@ export default function QuestCard({ quest, onToggle, onProgressUpdate, readonly 
       Animated.timing(scaleAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
     ]).start();
     onToggle && onToggle(quest);
+  }
+
+  function handleLongPress() {
+    if (readonly) return;
+    onLongPress && onLongPress(quest);
   }
 
   const isPenalty = quest.isPenalty;
@@ -33,6 +38,8 @@ export default function QuestCard({ quest, onToggle, onProgressUpdate, readonly 
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity
         onPress={handlePress}
+        onLongPress={handleLongPress}
+        delayLongPress={400}
         activeOpacity={readonly ? 1 : 0.85}
         style={[
           styles.card,
