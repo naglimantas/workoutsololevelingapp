@@ -43,6 +43,8 @@ export default function DailyQuestsScreen({ navigation }) {
   const [customTarget, setCustomTarget] = useState('');
   const [customUnit, setCustomUnit] = useState('reps');
   const [penaltyMessage] = useState(getRandomPenaltyMessage());
+  const [selectedQuest, setSelectedQuest] = useState(null);
+  const [editingQuest, setEditingQuest] = useState(null);
   const successAnim = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
@@ -82,8 +84,15 @@ export default function DailyQuestsScreen({ navigation }) {
       const p = await getHunterProfile();
       if (p) {
         p.xp = Math.max(0, p.xp - quest.xp);
+        const statType = quest.statType || 'quest';
+        const gains = STAT_REWARDS[statType] || STAT_REWARDS.quest;
+        for (const [stat, val] of Object.entries(gains)) {
+          if (p.stats[stat] !== undefined) p.stats[stat] = Math.max(0, p.stats[stat] - val);
+        }
+        p.stats.intelligence = Math.max(0, (p.stats.intelligence || 0) - 1);
+        p.rank = getRankForXP(p.xp);
         await saveHunterProfile(p);
-        setProfile(p);
+        setProfile({ ...p });
       }
     }
   }
@@ -123,19 +132,54 @@ export default function DailyQuestsScreen({ navigation }) {
     }
   }
 
-  function handleAddCustomQuest() {
-    if (!customName.trim() || !customTarget) return;
-    const quest = createCustomQuest({
-      name: customName.trim(),
-      type: customType,
-      target: customTarget,
-      unit: customUnit,
-    });
-    const updated = [...quests, quest];
+  function handleLongPressQuest(quest) {
+    setSelectedQuest(quest);
+  }
+
+  function handleDeleteQuest() {
+    const updated = quests.filter(q => q.id !== selectedQuest.id);
     setQuests(updated);
     const todayKey = getTodayKey();
-    saveDailyQuests({ date: todayKey, quests: updated, allCompleted: false }, todayKey);
+    const allCompleted = updated.length > 0 && updated.every(q => q.completed);
+    saveDailyQuests({ date: todayKey, quests: updated, allCompleted }, todayKey);
+    setSelectedQuest(null);
+  }
+
+  function handleStartEdit() {
+    const q = selectedQuest;
+    setEditingQuest(q);
+    setCustomName(q.name);
+    setCustomType(q.statType || 'strength');
+    setCustomTarget(String(q.target));
+    setCustomUnit(q.unit || 'reps');
+    setSelectedQuest(null);
+    setShowAddModal(true);
+  }
+
+  function handleAddCustomQuest() {
+    if (!customName.trim() || !customTarget) return;
+    const todayKey = getTodayKey();
+    if (editingQuest) {
+      const updated = quests.map(q =>
+        q.id === editingQuest.id
+          ? { ...q, name: customName.trim(), statType: customType, target: customTarget, unit: customUnit }
+          : q
+      );
+      setQuests(updated);
+      saveDailyQuests({ date: todayKey, quests: updated, allCompleted: updated.every(q => q.completed) }, todayKey);
+    } else {
+      const quest = createCustomQuest({
+        name: customName.trim(),
+        type: customType,
+        target: customTarget,
+        unit: customUnit,
+      });
+      const updated = [...quests, quest];
+      setQuests(updated);
+      saveDailyQuests({ date: todayKey, quests: updated, allCompleted: false }, todayKey);
+    }
     setShowAddModal(false);
+    setEditingQuest(null);
     setCustomName('');
     setCustomTarget('');
   }
@@ -187,7 +231,7 @@ export default function DailyQuestsScreen({ navigation }) {
           </Animated.View>
 
           {quests.map(quest => (
-            <QuestCard key={quest.id} quest={quest} onToggle={handleToggleQuest} />
+            <QuestCard key={quest.id} quest={quest} onToggle={handleToggleQuest} onLongPress={handleLongPressQuest} />
           ))}
 
           <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
@@ -201,10 +245,27 @@ export default function DailyQuestsScreen({ navigation }) {
           </View>
         </ScrollView>
 
+        <Modal visible={!!selectedQuest} transparent animationType="fade">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedQuest(null)}>
+            <View style={styles.actionPanel}>
+              <Text style={styles.actionTitle}>{selectedQuest?.name}</Text>
+              <TouchableOpacity style={styles.actionBtn} onPress={handleStartEdit}>
+                <Text style={styles.actionBtnText}>✏ EDIT QUEST</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDelete]} onPress={handleDeleteQuest}>
+                <Text style={[styles.actionBtnText, { color: colors.penalty }]}>✕ DELETE QUEST</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => setSelectedQuest(null)}>
+                <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>CANCEL</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         <Modal visible={showAddModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalPanel}>
-              <Text style={styles.modalTitle}>[ CUSTOM QUEST ]</Text>
+              <Text style={styles.modalTitle}>{editingQuest ? '[ EDIT QUEST ]' : '[ CUSTOM QUEST ]'}</Text>
 
               <Text style={styles.modalLabel}>QUEST NAME</Text>
               <TextInput
@@ -257,11 +318,11 @@ export default function DailyQuestsScreen({ navigation }) {
               </View>
 
               <View style={styles.modalButtons}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddModal(false)}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddModal(false); setEditingQuest(null); setCustomName(''); setCustomTarget(''); }}>
                   <Text style={styles.cancelText}>CANCEL</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.confirmBtn} onPress={handleAddCustomQuest}>
-                  <Text style={styles.confirmText}>ADD QUEST</Text>
+                  <Text style={styles.confirmText}>{editingQuest ? 'SAVE' : 'ADD QUEST'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -311,6 +372,11 @@ const styles = StyleSheet.create({
   infoText: { fontFamily: 'Rajdhani_400Regular', fontSize: 11, color: colors.textDim, textAlign: 'center', letterSpacing: 0.5, lineHeight: 17 },
 
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 },
+  actionPanel: { backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, borderRadius: 2, padding: 4, marginHorizontal: 40 },
+  actionTitle: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 13, color: colors.textSecondary, letterSpacing: 1, padding: 12, paddingBottom: 8, textAlign: 'center' },
+  actionBtn: { padding: 14, borderTopWidth: 1, borderTopColor: colors.border, alignItems: 'center' },
+  actionBtnDelete: { borderTopColor: colors.penalty + '44' },
+  actionBtnText: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 14, color: colors.electricBlue, letterSpacing: 1.5 },
   modalPanel: { backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.electricBlue, padding: 20, borderRadius: 2 },
   modalTitle: { fontFamily: 'Rajdhani_700Bold', fontSize: 14, color: colors.electricBlue, letterSpacing: 3, textAlign: 'center', marginBottom: 16 },
   modalLabel: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 10, color: colors.textSecondary, letterSpacing: 2.5, marginBottom: 6 },

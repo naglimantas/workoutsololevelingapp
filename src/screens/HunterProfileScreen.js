@@ -5,11 +5,12 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, rankColors } from '../theme/colors';
+import { colors, rankColors, statColors } from '../theme/colors';
 import SystemPanel from '../components/SystemPanel';
 import RankBadge from '../components/RankBadge';
 import XPBar from '../components/XPBar';
@@ -19,8 +20,37 @@ import { getLevelFromXP, RANK_ORDER } from '../utils/xpSystem';
 
 const RANK_LABELS = { E: 'E-Class', D: 'D-Class', C: 'C-Class', B: 'B-Class', A: 'A-Class', S: 'S-Class' };
 
+const STAT_INFO = {
+  strength: {
+    icon: '💪',
+    desc: 'Raw physical power. Increases through strength training, push-ups, and resistance exercises.',
+    gains: 'Gained from: Strength quests (+3), Workout sessions',
+  },
+  agility: {
+    icon: '⚡',
+    desc: 'Speed and reflexes. Built through cardio, flexibility work, and quick-movement exercises.',
+    gains: 'Gained from: Cardio quests (+3), Flexibility training (+2)',
+  },
+  endurance: {
+    icon: '🛡',
+    desc: 'Stamina and staying power. Forged through long sessions, circuits, and sustained effort.',
+    gains: 'Gained from: Endurance quests (+4), Strength quests (+1), Cardio (+2)',
+  },
+  vitality: {
+    icon: '🌀',
+    desc: 'Life force and recovery. Strengthened by rest, flexibility, and consistent training habits.',
+    gains: 'Gained from: Rest quests (+3), Flexibility quests (+2), Endurance (+1)',
+  },
+  intelligence: {
+    icon: '🧠',
+    desc: 'Mental fortitude and adaptability. Awarded for completing quests and strategic training.',
+    gains: 'Gained from: Every completed quest (+1), Quest-type quests (+2)',
+  },
+};
+
 export default function HunterProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
+  const [selectedStat, setSelectedStat] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -72,9 +102,11 @@ export default function HunterProfileScreen({ navigation }) {
           {/* Stats */}
           <SystemPanel style={styles.panel}>
             <Text style={styles.panelTitle}>CORE STATISTICS</Text>
-            <Text style={styles.panelSub}>Gained through training, quests, and endurance</Text>
+            <Text style={styles.panelSub}>Tap a stat to learn how it's gained</Text>
             {Object.entries(profile.stats).map(([stat, val]) => (
-              <StatBar key={stat} statName={stat} value={val} showValue />
+              <TouchableOpacity key={stat} onPress={() => setSelectedStat({ name: stat, value: val })} activeOpacity={0.7}>
+                <StatBar statName={stat} value={val} showValue />
+              </TouchableOpacity>
             ))}
           </SystemPanel>
 
@@ -145,6 +177,29 @@ export default function HunterProfileScreen({ navigation }) {
             <Text style={styles.quoteText}>"Power is not given. It is taken, forged through sacrifice."</Text>
           </View>
         </ScrollView>
+
+        <Modal visible={!!selectedStat} transparent animationType="fade">
+          <TouchableOpacity style={styles.statOverlay} activeOpacity={1} onPress={() => setSelectedStat(null)}>
+            <View style={[styles.statModal, selectedStat && { borderColor: statColors[selectedStat.name] || colors.border }]}>
+              {selectedStat && (() => {
+                const info = STAT_INFO[selectedStat.name] || {};
+                const color = statColors[selectedStat.name] || colors.electricBlue;
+                return (
+                  <>
+                    <Text style={[styles.statModalIcon]}>{info.icon || '◆'}</Text>
+                    <Text style={[styles.statModalName, { color }]}>{selectedStat.name.toUpperCase()}</Text>
+                    <Text style={[styles.statModalValue, { color }]}>{selectedStat.value} <Text style={styles.statModalMax}>/ 500</Text></Text>
+                    <View style={[styles.statModalBar, { backgroundColor: colors.surface }]}>
+                      <View style={[styles.statModalFill, { width: `${Math.min(selectedStat.value / 500, 1) * 100}%`, backgroundColor: color }]} />
+                    </View>
+                    <Text style={styles.statModalDesc}>{info.desc}</Text>
+                    <Text style={[styles.statModalGains, { color: color + 'bb' }]}>{info.gains}</Text>
+                  </>
+                );
+              })()}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -280,6 +335,17 @@ const styles = StyleSheet.create({
     color: colors.gold,
     letterSpacing: 1,
   },
+  statOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 32 },
+  statModal: { backgroundColor: colors.surfaceElevated, borderWidth: 1, borderRadius: 2, padding: 24, alignItems: 'center' },
+  statModalIcon: { fontSize: 36, marginBottom: 8 },
+  statModalName: { fontFamily: 'Rajdhani_700Bold', fontSize: 20, letterSpacing: 3, marginBottom: 4 },
+  statModalValue: { fontFamily: 'Rajdhani_700Bold', fontSize: 32, letterSpacing: 1, marginBottom: 12 },
+  statModalMax: { fontFamily: 'Rajdhani_400Regular', fontSize: 16, color: colors.textDim },
+  statModalBar: { width: '100%', height: 6, borderRadius: 1, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  statModalFill: { height: '100%', borderRadius: 1 },
+  statModalDesc: { fontFamily: 'Rajdhani_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, letterSpacing: 0.3, marginBottom: 10 },
+  statModalGains: { fontFamily: 'Rajdhani_500Medium', fontSize: 11, textAlign: 'center', letterSpacing: 0.5, lineHeight: 17 },
+
   quote: { alignItems: 'center', marginTop: 16, paddingHorizontal: 20 },
   quoteText: {
     fontFamily: 'Rajdhani_400Regular',
