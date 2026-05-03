@@ -39,6 +39,18 @@ const NAV_ITEMS = [
   { screen: 'Leaderboard', icon: '🏆', label: 'RANKS' },
 ];
 
+const RANK_DISPLAY = {
+  E: 'E — CLASS HUNTER',
+  D: 'D — CLASS HUNTER',
+  C: 'C — CLASS HUNTER',
+  B: 'B — CLASS HUNTER',
+  A: 'A — CLASS HUNTER',
+  S: 'S — CLASS HUNTER',
+  National: 'NATIONAL LEVEL',
+  Monarch: 'MONARCH',
+  Sovereign: 'SHADOW SOVEREIGN',
+};
+
 export default function HomeDashboardScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [dailyQuests, setDailyQuests] = useState(null);
@@ -55,7 +67,6 @@ export default function HomeDashboardScreen({ navigation }) {
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-    // Pulse animation for boss battle button
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
@@ -71,7 +82,6 @@ export default function HomeDashboardScreen({ navigation }) {
     const quests = await getDailyQuests(getTodayKey());
     setDailyQuests(quests);
 
-    // Check boss availability
     const bossData = await getBossData();
     const weekStart = getWeekStartDate();
     const available = !bossData || bossData.weekStart !== weekStart || !bossData.defeated;
@@ -104,27 +114,23 @@ export default function HomeDashboardScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.electricBlue} />}
           showsVerticalScrollIndicator={false}
         >
-          {/* System Header */}
           <View style={styles.systemHeader}>
             <Text style={styles.systemTag}>[ SHADOW MONARCH SYSTEM ]</Text>
           </View>
 
-          {/* Hero Section */}
           <View style={styles.heroSection}>
-            <RankBadge rank={rank} size="large" />
+            <RankBadge rank={rank} size="medium" />
             <View style={styles.heroInfo}>
               <Text style={styles.hunterName}>{profile.name}</Text>
-              <Text style={[styles.rankText, { color: rankColor }]}>{rank} — CLASS HUNTER</Text>
+              <Text style={[styles.rankText, { color: rankColor }]}>{RANK_DISPLAY[rank] || rank}</Text>
               <Text style={styles.levelText}>LVL {level}</Text>
             </View>
           </View>
 
-          {/* XP Bar */}
           <SystemPanel style={styles.xpPanel}>
             <XPBar totalXP={profile.xp} rank={rank} />
           </SystemPanel>
 
-          {/* Stats quick view */}
           <SystemPanel style={styles.statsPanel}>
             <Text style={styles.panelTitle}>CORE STATS</Text>
             {Object.entries(profile.stats).map(([stat, val]) => (
@@ -132,7 +138,6 @@ export default function HomeDashboardScreen({ navigation }) {
             ))}
           </SystemPanel>
 
-          {/* Streak + Workouts */}
           <View style={styles.metricsRow}>
             <SystemPanel style={styles.metricCard}>
               <Text style={styles.metricValue}>{profile.streak}</Text>
@@ -150,7 +155,6 @@ export default function HomeDashboardScreen({ navigation }) {
             </SystemPanel>
           </View>
 
-          {/* Navigation Grid */}
           <Text style={styles.sectionTitle}>[ HUNTER INTERFACE ]</Text>
           <View style={styles.navGrid}>
             {NAV_ITEMS.map(item => {
@@ -171,9 +175,11 @@ export default function HomeDashboardScreen({ navigation }) {
                     <LinearGradient
                       colors={
                         isBoss && bossAvailable
-                          ? [colors.penalty + '33', colors.darkPurple]
+                          ? [colors.penaltyDark, colors.penalty + '44', colors.penaltyDark]
                           : [colors.surfaceElevated, colors.surface]
                       }
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
                       style={styles.navGrad}
                     >
                       <Text style={styles.navIcon}>{item.icon}</Text>
@@ -193,7 +199,6 @@ export default function HomeDashboardScreen({ navigation }) {
             })}
           </View>
 
-          {/* System Message */}
           {dailyQuests?.quests?.length > 0 && questsCompleted < questsTotal && (
             <SystemPanel style={styles.alertPanel}>
               <Text style={styles.alertText}>
@@ -217,12 +222,12 @@ export default function HomeDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 12, paddingBottom: 16 },
 
-  systemHeader: { alignItems: 'center', marginBottom: 20, marginTop: 8 },
+  systemHeader: { alignItems: 'center', marginBottom: 10, marginTop: 2 },
   systemTag: {
     fontFamily: 'Rajdhani_500Medium',
-    fontSize: 11,
+    fontSize: 10,
     color: colors.electricBlue,
     letterSpacing: 3,
   },
@@ -230,74 +235,74 @@ const styles = StyleSheet.create({
   heroSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 16,
+    marginBottom: 10,
+    gap: 12,
   },
   heroInfo: { flex: 1 },
   hunterName: {
     fontFamily: 'Rajdhani_700Bold',
-    fontSize: 28,
+    fontSize: 22,
     color: colors.textPrimary,
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
   rankText: {
     fontFamily: 'Rajdhani_600SemiBold',
-    fontSize: 14,
+    fontSize: 12,
     letterSpacing: 2,
-    marginTop: 2,
+    marginTop: 1,
   },
   levelText: {
     fontFamily: 'Rajdhani_500Medium',
-    fontSize: 13,
+    fontSize: 11,
     color: colors.textSecondary,
     letterSpacing: 1,
-    marginTop: 2,
+    marginTop: 1,
   },
 
-  xpPanel: { marginBottom: 12 },
-  statsPanel: { marginBottom: 12 },
+  xpPanel: { marginBottom: 8, padding: 12 },
+  statsPanel: { marginBottom: 8, padding: 12 },
   panelTitle: {
     fontFamily: 'Rajdhani_600SemiBold',
-    fontSize: 10,
+    fontSize: 9,
     color: colors.textSecondary,
     letterSpacing: 3,
-    marginBottom: 10,
+    marginBottom: 6,
   },
 
-  metricsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  metricCard: { flex: 1, alignItems: 'center', padding: 12 },
+  metricsRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  metricCard: { flex: 1, alignItems: 'center', padding: 8 },
   metricValue: {
     fontFamily: 'Rajdhani_700Bold',
-    fontSize: 24,
+    fontSize: 18,
     color: colors.textPrimary,
     letterSpacing: 1,
   },
   metricLabel: {
     fontFamily: 'Rajdhani_500Medium',
-    fontSize: 9,
+    fontSize: 8,
     color: colors.textSecondary,
     letterSpacing: 1,
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
   },
 
   sectionTitle: {
     fontFamily: 'Rajdhani_600SemiBold',
-    fontSize: 11,
+    fontSize: 10,
     color: colors.electricBlue,
     letterSpacing: 3,
-    marginBottom: 12,
+    marginBottom: 6,
     textAlign: 'center',
   },
   navGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 8,
   },
   navItem: {
-    width: (width - 52) / 3,
+    width: (width - 40) / 3,
     borderRadius: 2,
     overflow: 'hidden',
     borderWidth: 1,
@@ -312,25 +317,25 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   navGrad: {
-    padding: 14,
+    padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 80,
+    minHeight: 62,
     position: 'relative',
   },
-  navIcon: { fontSize: 24, marginBottom: 6 },
+  navIcon: { fontSize: 20, marginBottom: 3 },
   navLabel: {
     fontFamily: 'Rajdhani_600SemiBold',
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textPrimary,
     letterSpacing: 1.5,
   },
   bossAlert: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 4,
+    right: 4,
     fontFamily: 'Rajdhani_700Bold',
-    fontSize: 8,
+    fontSize: 7,
     color: colors.penalty,
     letterSpacing: 1,
     backgroundColor: colors.penaltyDark,
@@ -339,18 +344,18 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  alertPanel: { borderColor: colors.warning, marginBottom: 12 },
+  alertPanel: { borderColor: colors.warning, marginBottom: 6, padding: 10 },
   alertText: {
     fontFamily: 'Rajdhani_500Medium',
-    fontSize: 13,
+    fontSize: 11,
     color: colors.warning,
     letterSpacing: 0.5,
   },
 
-  footer: { alignItems: 'center', marginTop: 8, paddingBottom: 8 },
+  footer: { alignItems: 'center', marginTop: 4 },
   footerText: {
     fontFamily: 'Rajdhani_400Regular',
-    fontSize: 12,
+    fontSize: 10,
     color: colors.textDim,
     fontStyle: 'italic',
     textAlign: 'center',

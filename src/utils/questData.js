@@ -75,6 +75,14 @@ function getTodayKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+export const TYPE_ICONS = {
+  strength: '💪',
+  cardio: '⚡',
+  endurance: '🛡',
+  flexibility: '🌀',
+  rest: '🌙',
+};
+
 export function createCustomQuest({ name, type, target, unit }) {
   return {
     id: `custom_${Date.now()}`,
@@ -85,7 +93,7 @@ export function createCustomQuest({ name, type, target, unit }) {
     unit,
     xp: 50,
     statType: type,
-    icon: '⚔️',
+    icon: TYPE_ICONS[type] || '⚔️',
     completed: false,
     progress: 0,
     isPenalty: false,
