@@ -1,14 +1,17 @@
-// XP thresholds per rank
+// XP thresholds per rank — Solo Leveling progression
 export const RANK_THRESHOLDS = {
   E: 0,
-  D: 500,
-  C: 1500,
-  B: 3500,
-  A: 7000,
-  S: 15000,
+  D: 1200,
+  C: 4000,
+  B: 9500,
+  A: 22000,
+  S: 50000,
+  National: 110000,
+  Monarch: 250000,
+  Sovereign: 600000,
 };
 
-export const RANK_ORDER = ['E', 'D', 'C', 'B', 'A', 'S'];
+export const RANK_ORDER = ['E', 'D', 'C', 'B', 'A', 'S', 'National', 'Monarch', 'Sovereign'];
 
 // XP awarded per quest completion
 export const XP_REWARDS = {
@@ -93,4 +96,7 @@ export const RANK_MESSAGES = {
   B: 'Only the elite walk this path. The System watches you closely.',
   A: 'You stand among the chosen few. The Monarch\'s power stirs within.',
   S: 'You have ascended. The Shadow Monarch acknowledges your dominion.',
+  National: 'You walk among the National Level Hunters. Nations bow before your strength.',
+  Monarch: 'You have transcended mortal limits. The throne of a Monarch is yours.',
+  Sovereign: 'You are the Shadow Sovereign. Reality itself trembles in your presence.',
 };

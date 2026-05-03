@@ -1,16 +1,16 @@
 export const colors = {
-  // Base
-  background: '#0a0a0a',
-  surface: '#0f0f1a',
-  surfaceElevated: '#141428',
+  // Base — deeper blacks with subtle violet undertone for that Solo Leveling void feel
+  background: '#05050c',
+  surface: '#0a0a14',
+  surfaceElevated: '#101022',
 
-  // Brand
-  darkPurple: '#1a0033',
-  electricBlue: '#4400ff',
-  deepBlue: '#000055',
-  glowBlue: '#0066ff',
-  glowPurple: '#9900ff',
-  violet: '#6600cc',
+  // Brand — sharper electric blue, deeper violet
+  darkPurple: '#13002b',
+  electricBlue: '#3300ff',
+  deepBlue: '#000044',
+  glowBlue: '#0055ff',
+  glowPurple: '#7700dd',
+  violet: '#5500bb',
   neonBlue: '#00aaff',
 
   // Text
@@ -37,6 +37,9 @@ export const colors = {
   rankB: '#ff8844',
   rankA: '#ff4488',
   rankS: '#ffcc00',
+  rankNational: '#ff44ff',
+  rankMonarch: '#aa00ff',
+  rankSovereign: '#ff0066',
 
   // Stats
   strength: '#ff4455',
@@ -45,11 +48,11 @@ export const colors = {
   intelligence: '#cc88ff',
   vitality: '#44ff88',
 
-  // UI
-  border: '#2a1a4a',
-  borderGlow: '#4400ff60',
-  borderGlowStrong: '#4400ff',
-  overlay: '#0a0a0a99',
+  // UI — sharper borders, more contrast
+  border: '#221140',
+  borderGlow: '#3300ff60',
+  borderGlowStrong: '#3300ff',
+  overlay: '#000000cc',
 
   // Transparent
   transparent: 'transparent',
@@ -62,6 +65,9 @@ export const rankColors = {
   B: colors.rankB,
   A: colors.rankA,
   S: colors.rankS,
+  National: colors.rankNational,
+  Monarch: colors.rankMonarch,
+  Sovereign: colors.rankSovereign,
 };
 
 export const statColors = {

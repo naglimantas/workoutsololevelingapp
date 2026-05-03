@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,10 +16,20 @@ import SystemPanel from '../components/SystemPanel';
 import RankBadge from '../components/RankBadge';
 import XPBar from '../components/XPBar';
 import StatBar from '../components/StatBar';
-import { getHunterProfile } from '../utils/storage';
+import { getHunterProfile, saveHunterProfile } from '../utils/storage';
 import { getLevelFromXP, RANK_ORDER } from '../utils/xpSystem';
 
-const RANK_LABELS = { E: 'E-Class', D: 'D-Class', C: 'C-Class', B: 'B-Class', A: 'A-Class', S: 'S-Class' };
+const RANK_LABELS = {
+  E: 'E-Class',
+  D: 'D-Class',
+  C: 'C-Class',
+  B: 'B-Class',
+  A: 'A-Class',
+  S: 'S-Class',
+  National: 'National Level',
+  Monarch: 'Monarch',
+  Sovereign: 'Shadow Sovereign',
+};
 
 const STAT_INFO = {
   strength: {
@@ -58,6 +69,38 @@ export default function HunterProfileScreen({ navigation }) {
     }, [])
   );
 
+  function confirmResetProgress() {
+    Alert.alert(
+      'RESET PROGRESS',
+      'This will reset XP, rank, stats, streak and titles to zero.\n\nYour custom quests and saved workouts will be kept.\n\nThis cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'RESET',
+          style: 'destructive',
+          onPress: async () => {
+            const p = await getHunterProfile();
+            if (!p) return;
+            const reset = {
+              ...p,
+              xp: 0,
+              level: 1,
+              rank: 'E',
+              stats: { strength: 10, agility: 10, endurance: 10, intelligence: 10, vitality: 10 },
+              streak: 0,
+              totalWorkouts: 0,
+              lastWorkoutDate: null,
+              lastQuestDate: null,
+              titles: [],
+            };
+            await saveHunterProfile(reset);
+            setProfile(reset);
+          },
+        },
+      ]
+    );
+  }
+
   if (!profile) return null;
 
   const level = getLevelFromXP(profile.xp);
@@ -67,7 +110,6 @@ export default function HunterProfileScreen({ navigation }) {
   return (
     <LinearGradient colors={[colors.background, colors.darkPurple + '55', colors.background]} style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Back */}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>← BACK</Text>
         </TouchableOpacity>
@@ -75,7 +117,6 @@ export default function HunterProfileScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.screenTag}>[ HUNTER PROFILE ]</Text>
 
-          {/* Hero */}
           <SystemPanel glow style={styles.heroPanel}>
             <View style={styles.heroRow}>
               <RankBadge rank={rank} size="xlarge" />
@@ -94,12 +135,10 @@ export default function HunterProfileScreen({ navigation }) {
             </View>
           </SystemPanel>
 
-          {/* XP */}
           <SystemPanel style={styles.panel}>
             <XPBar totalXP={profile.xp} rank={rank} />
           </SystemPanel>
 
-          {/* Stats */}
           <SystemPanel style={styles.panel}>
             <Text style={styles.panelTitle}>CORE STATISTICS</Text>
             <Text style={styles.panelSub}>Tap a stat to learn how it's gained</Text>
@@ -110,7 +149,6 @@ export default function HunterProfileScreen({ navigation }) {
             ))}
           </SystemPanel>
 
-          {/* Combat Record */}
           <SystemPanel style={styles.panel}>
             <Text style={styles.panelTitle}>HUNTER RECORD</Text>
             <View style={styles.recordGrid}>
@@ -133,7 +171,6 @@ export default function HunterProfileScreen({ navigation }) {
             </View>
           </SystemPanel>
 
-          {/* Rank Progression */}
           <SystemPanel style={styles.panel}>
             <Text style={styles.panelTitle}>RANK PROGRESSION</Text>
             <View style={styles.rankTrack}>
@@ -159,7 +196,6 @@ export default function HunterProfileScreen({ navigation }) {
             </View>
           </SystemPanel>
 
-          {/* Titles */}
           {profile.titles?.length > 0 && (
             <SystemPanel style={styles.panel}>
               <Text style={styles.panelTitle}>TITLES EARNED</Text>
@@ -172,6 +208,14 @@ export default function HunterProfileScreen({ navigation }) {
               </View>
             </SystemPanel>
           )}
+
+          <SystemPanel style={[styles.panel, styles.dangerPanel]}>
+            <Text style={styles.dangerTitle}>SYSTEM RESET</Text>
+            <Text style={styles.dangerSub}>Wipe XP, rank, stats and streaks. Your custom quests and saved workouts are preserved.</Text>
+            <TouchableOpacity style={styles.dangerBtn} onPress={confirmResetProgress} activeOpacity={0.85}>
+              <Text style={styles.dangerBtnText}>↺ RESET PROGRESS</Text>
+            </TouchableOpacity>
+          </SystemPanel>
 
           <View style={styles.quote}>
             <Text style={styles.quoteText}>"Power is not given. It is taken, forged through sacrifice."</Text>
@@ -345,6 +389,12 @@ const styles = StyleSheet.create({
   statModalFill: { height: '100%', borderRadius: 1 },
   statModalDesc: { fontFamily: 'Rajdhani_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, letterSpacing: 0.3, marginBottom: 10 },
   statModalGains: { fontFamily: 'Rajdhani_500Medium', fontSize: 11, textAlign: 'center', letterSpacing: 0.5, lineHeight: 17 },
+
+  dangerPanel: { borderColor: colors.penalty + '88', marginTop: 8 },
+  dangerTitle: { fontFamily: 'Rajdhani_700Bold', fontSize: 12, color: colors.penalty, letterSpacing: 2.5, marginBottom: 6 },
+  dangerSub: { fontFamily: 'Rajdhani_400Regular', fontSize: 11, color: colors.textDim, lineHeight: 16, letterSpacing: 0.3, marginBottom: 12 },
+  dangerBtn: { borderWidth: 1, borderColor: colors.penalty, borderRadius: 2, padding: 12, alignItems: 'center', backgroundColor: colors.penalty + '11' },
+  dangerBtnText: { fontFamily: 'Rajdhani_700Bold', fontSize: 13, color: colors.penalty, letterSpacing: 2 },
 
   quote: { alignItems: 'center', marginTop: 16, paddingHorizontal: 20 },
   quoteText: {

@@ -2,13 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { rankColors } from '../theme/colors';
 
-const RANK_LABELS = {
+// Short labels for badges. Multi-letter ranks use a single glyph.
+const RANK_GLYPH = {
   E: 'E',
   D: 'D',
   C: 'C',
   B: 'B',
   A: 'A',
   S: 'S',
+  National: 'N',
+  Monarch: 'M',
+  Sovereign: '◆',
 };
 
 export default function RankBadge({ rank = 'E', size = 'medium', showClass = true }) {
@@ -35,6 +39,13 @@ export default function RankBadge({ rank = 'E', size = 'medium', showClass = tru
     xlarge: 12,
   };
 
+  const shadowRadiusByMode = {
+    small: 4,
+    medium: 6,
+    large: 10,
+    xlarge: 14,
+  };
+
   return (
     <View
       style={[
@@ -47,8 +58,19 @@ export default function RankBadge({ rank = 'E', size = 'medium', showClass = tru
         },
       ]}
     >
-      <Text style={[styles.rankText, { color, fontSize: textSizes[size] }]}>
-        {RANK_LABELS[rank]}
+      <Text
+        style={[
+          styles.rankText,
+          {
+            color,
+            fontSize: textSizes[size],
+            textShadowColor: color,
+            textShadowRadius: shadowRadiusByMode[size],
+            textShadowOffset: { width: 0, height: 0 },
+          },
+        ]}
+      >
+        {RANK_GLYPH[rank] || rank.charAt(0)}
       </Text>
       {showClass && size !== 'small' && (
         <Text style={[styles.classLabel, { color: color + 'bb', fontSize: labelSizes[size] }]}>
@@ -70,11 +92,14 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontFamily: 'Rajdhani_700Bold',
-    letterSpacing: 2,
+    letterSpacing: 0,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   classLabel: {
     fontFamily: 'Rajdhani_600SemiBold',
     letterSpacing: 2,
-    marginTop: -4,
+    marginTop: -2,
+    textAlign: 'center',
   },
 });

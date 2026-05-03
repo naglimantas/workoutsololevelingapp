@@ -30,6 +30,7 @@ import {
   getRandomPenaltyMessage,
   EXERCISE_TYPES,
   UNIT_OPTIONS,
+  TYPE_ICONS,
 } from '../utils/questData';
 import { XP_REWARDS, checkRankUp, STAT_REWARDS, getRankForXP } from '../utils/xpSystem';
 
@@ -111,10 +112,16 @@ export default function DailyQuestsScreen({ navigation }) {
     }
     p.stats.intelligence += 1;
 
-    if (allCompleted) {
+    const todayKey = getTodayKey();
+    if (allCompleted && p.lastQuestDate !== todayKey) {
+      // Award the all-quests bonus once per real calendar day.
+      // Using lastQuestDate as the gate means re-toggling a quest after
+      // already clearing the day will not double-award XP or streak.
       p.xp += XP_REWARDS.allQuestsBonus;
-      p.lastQuestDate = getTodayKey();
-      p.streak = (p.streak || 0) + 1;
+      const yesterday = new Date(Date.now() - 86400000);
+      const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      p.streak = p.lastQuestDate === yKey ? (p.streak || 0) + 1 : 1;
+      p.lastQuestDate = todayKey;
     }
 
     const rankCheck = checkRankUp(oldXP, p.xp);
@@ -162,7 +169,7 @@ export default function DailyQuestsScreen({ navigation }) {
     if (editingQuest) {
       const updated = quests.map(q =>
         q.id === editingQuest.id
-          ? { ...q, name: customName.trim(), statType: customType, target: customTarget, unit: customUnit }
+          ? { ...q, name: customName.trim(), type: customType, statType: customType, target: customTarget, unit: customUnit, icon: TYPE_ICONS[customType] || q.icon }
           : q
       );
       setQuests(updated);
