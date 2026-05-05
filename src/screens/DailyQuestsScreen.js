@@ -69,6 +69,11 @@ export default function DailyQuestsScreen({ navigation }) {
     setHasPenalty(data.quests?.some(q => q.isPenalty) || false);
   }
 
+  function getYesterdayKey() {
+    const yesterday = new Date(Date.now() - 86400000);
+    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  }
+
   async function handleToggleQuest(quest) {
     const updated = quests.map(q =>
       q.id === quest.id ? { ...q, completed: !q.completed } : q
@@ -91,6 +96,16 @@ export default function DailyQuestsScreen({ navigation }) {
           if (p.stats[stat] !== undefined) p.stats[stat] = Math.max(0, p.stats[stat] - val);
         }
         p.stats.intelligence = Math.max(0, (p.stats.intelligence || 0) - 1);
+
+        // If the all-quests bonus was awarded today, deduct it and revert streak
+        if (p.allQuestsBonusDate === todayKey) {
+          p.xp = Math.max(0, p.xp - XP_REWARDS.allQuestsBonus);
+          p.allQuestsBonusDate = null;
+          p.streak = Math.max(0, (p.streak || 1) - 1);
+          // Restore lastQuestDate so streak resumes correctly if all quests re-completed
+          p.lastQuestDate = p.streak > 0 ? getYesterdayKey() : null;
+        }
+
         p.rank = getRankForXP(p.xp);
         await saveHunterProfile(p);
         setProfile({ ...p });
@@ -113,15 +128,12 @@ export default function DailyQuestsScreen({ navigation }) {
     p.stats.intelligence += 1;
 
     const todayKey = getTodayKey();
-    if (allCompleted && p.lastQuestDate !== todayKey) {
-      // Award the all-quests bonus once per real calendar day.
-      // Using lastQuestDate as the gate means re-toggling a quest after
-      // already clearing the day will not double-award XP or streak.
+    if (allCompleted && p.allQuestsBonusDate !== todayKey) {
       p.xp += XP_REWARDS.allQuestsBonus;
-      const yesterday = new Date(Date.now() - 86400000);
-      const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      const yKey = getYesterdayKey();
       p.streak = p.lastQuestDate === yKey ? (p.streak || 0) + 1 : 1;
       p.lastQuestDate = todayKey;
+      p.allQuestsBonusDate = todayKey;
     }
 
     const rankCheck = checkRankUp(oldXP, p.xp);
