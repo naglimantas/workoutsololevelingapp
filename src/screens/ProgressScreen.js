@@ -10,19 +10,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { VictoryChart, VictoryLine, VictoryAxis, VictoryTheme, VictoryBar } from 'victory-native';
+import { VictoryChart, VictoryLine, VictoryAxis, VictoryTheme } from 'victory-native';
 import { colors, statColors, rankColors } from '../theme/colors';
 import SystemPanel from '../components/SystemPanel';
-import {
-  getHunterProfile,
-  getWorkoutHistory,
-  getWeeklyStats,
-} from '../utils/storage';
+import { getHunterProfile, getWorkoutHistory, getWeeklyStats } from '../utils/storage';
 import { getLevelFromXP } from '../utils/xpSystem';
 
 const { width } = Dimensions.get('window');
 const CHART_WIDTH = width - 64;
-
 const STAT_NAMES = ['strength', 'agility', 'endurance', 'intelligence', 'vitality'];
 
 export default function ProgressScreen({ navigation }) {
@@ -30,48 +25,21 @@ export default function ProgressScreen({ navigation }) {
   const [history, setHistory] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState([]);
   const [selectedStat, setSelectedStat] = useState('strength');
-  const [tab, setTab] = useState('stats'); // stats | workouts | records
+  const [tab, setTab] = useState('stats');
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, []));
 
   async function loadData() {
-    const [p, h, ws] = await Promise.all([
-      getHunterProfile(),
-      getWorkoutHistory(),
-      getWeeklyStats(),
-    ]);
-    setProfile(p);
-    setHistory(h);
-    setWeeklyStats(ws);
+    const [p, h, ws] = await Promise.all([getHunterProfile(), getWorkoutHistory(), getWeeklyStats()]);
+    setProfile(p); setHistory(h); setWeeklyStats(ws);
   }
 
   if (!profile) return null;
 
   const level = getLevelFromXP(profile.xp);
-
-  // Chart data for selected stat
-  const statChartData = weeklyStats.slice(-14).map((snap, i) => ({
-    x: i + 1,
-    y: snap.stats?.[selectedStat] || 0,
-  }));
-
-  // XP chart data
-  const xpChartData = weeklyStats.slice(-14).map((snap, i) => ({
-    x: i + 1,
-    y: snap.xp || 0,
-  }));
-
-  // Workout frequency (last 7 days)
-  const last7 = history.filter(w => {
-    const d = new Date(w.date);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
-    return d > cutoff;
-  }).length;
+  const statChartData = weeklyStats.slice(-14).map((snap, i) => ({ x: i + 1, y: snap.stats?.[selectedStat] || 0 }));
+  const xpChartData = weeklyStats.slice(-14).map((snap, i) => ({ x: i + 1, y: snap.xp || 0 }));
+  const last7 = history.filter(w => new Date(w.date) > new Date(Date.now() - 7 * 86400000)).length;
 
   const customTheme = {
     ...VictoryTheme.material,
@@ -96,53 +64,37 @@ export default function ProgressScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.screenTag}>[ PROGRESS ANALYTICS ]</Text>
 
-          {/* Summary Row */}
           <View style={styles.summaryRow}>
             <SystemPanel style={styles.summaryCard}>
               <Text style={styles.summaryValue}>{last7}</Text>
-              <Text style={styles.summaryLabel}>WORKOUTS{'\n'}THIS WEEK</Text>
+              <Text style={styles.summaryLabel}>WORKOUTS{`\n`}THIS WEEK</Text>
             </SystemPanel>
             <SystemPanel style={styles.summaryCard}>
               <Text style={styles.summaryValue}>{profile.streak}</Text>
-              <Text style={styles.summaryLabel}>🔥 DAY{'\n'}STREAK</Text>
+              <Text style={styles.summaryLabel}>🔥 DAY{`\n`}STREAK</Text>
             </SystemPanel>
             <SystemPanel style={styles.summaryCard}>
               <Text style={styles.summaryValue}>{level}</Text>
-              <Text style={styles.summaryLabel}>CURRENT{'\n'}LEVEL</Text>
+              <Text style={styles.summaryLabel}>CURRENT{`\n`}LEVEL</Text>
             </SystemPanel>
           </View>
 
-          {/* Tab Selector */}
           <View style={styles.tabRow}>
             {['stats', 'workouts'].map(t => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.tab, tab === t && styles.tabActive]}
-                onPress={() => setTab(t)}
-              >
-                <Text style={[styles.tabText, tab === t && { color: colors.electricBlue }]}>
-                  {t.toUpperCase()}
-                </Text>
+              <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+                <Text style={[styles.tabText, tab === t && { color: colors.electricBlue }]}>{t.toUpperCase()}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* STATS TAB */}
           {tab === 'stats' && (
             <>
-              {/* Stat selector */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statSelector}>
                 {STAT_NAMES.map(s => {
                   const sc = statColors[s];
                   return (
-                    <TouchableOpacity
-                      key={s}
-                      style={[styles.statChip, selectedStat === s && { borderColor: sc, backgroundColor: sc + '22' }]}
-                      onPress={() => setSelectedStat(s)}
-                    >
-                      <Text style={[styles.statChipText, selectedStat === s && { color: sc }]}>
-                        {s.toUpperCase()}
-                      </Text>
+                    <TouchableOpacity key={s} style={[styles.statChip, selectedStat === s && { borderColor: sc, backgroundColor: sc + '22' }]} onPress={() => setSelectedStat(s)}>
+                      <Text style={[styles.statChipText, selectedStat === s && { color: sc }]}>{s.toUpperCase()}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -150,29 +102,11 @@ export default function ProgressScreen({ navigation }) {
 
               {weeklyStats.length >= 2 ? (
                 <SystemPanel style={styles.chartPanel} noPad>
-                  <Text style={[styles.chartTitle, { color: statColors[selectedStat] }]}>
-                    {selectedStat.toUpperCase()} OVER TIME
-                  </Text>
-                  <VictoryChart
-                    width={CHART_WIDTH}
-                    height={200}
-                    theme={customTheme}
-                    padding={{ top: 20, bottom: 40, left: 50, right: 20 }}
-                  >
-                    <VictoryAxis
-                      tickFormat={() => ''}
-                    />
+                  <Text style={[styles.chartTitle, { color: statColors[selectedStat] }]}>{selectedStat.toUpperCase()} OVER TIME</Text>
+                  <VictoryChart width={CHART_WIDTH} height={200} theme={customTheme} padding={{ top: 20, bottom: 40, left: 50, right: 20 }}>
+                    <VictoryAxis tickFormat={() => ''} />
                     <VictoryAxis dependentAxis />
-                    <VictoryLine
-                      data={statChartData}
-                      style={{
-                        data: {
-                          stroke: statColors[selectedStat],
-                          strokeWidth: 2,
-                        },
-                      }}
-                      animate={{ duration: 500 }}
-                    />
+                    <VictoryLine data={statChartData} style={{ data: { stroke: statColors[selectedStat], strokeWidth: 2 } }} animate={{ duration: 500 }} />
                   </VictoryChart>
                 </SystemPanel>
               ) : (
@@ -181,7 +115,6 @@ export default function ProgressScreen({ navigation }) {
                 </SystemPanel>
               )}
 
-              {/* Current stats */}
               <SystemPanel style={styles.panel}>
                 <Text style={styles.panelTitle}>CURRENT STAT VALUES</Text>
                 {STAT_NAMES.map(s => {
@@ -190,38 +123,26 @@ export default function ProgressScreen({ navigation }) {
                   return (
                     <View key={s} style={styles.statRow}>
                       <Text style={[styles.statName, { color: sc }]}>{s.toUpperCase()}</Text>
-                      <View style={styles.statTrack}>
-                        <View style={[styles.statFill, { width: `${Math.min(val / 500 * 100, 100)}%`, backgroundColor: sc }]} />
-                      </View>
+                      <View style={styles.statTrack}><View style={[styles.statFill, { width: `${Math.min(val / 500 * 100, 100)}%`, backgroundColor: sc }]} /></View>
                       <Text style={[styles.statVal, { color: sc }]}>{val}</Text>
                     </View>
                   );
                 })}
               </SystemPanel>
 
-              {/* XP chart */}
               {weeklyStats.length >= 2 && (
                 <SystemPanel style={styles.chartPanel} noPad>
                   <Text style={[styles.chartTitle, { color: colors.gold }]}>XP OVER TIME</Text>
-                  <VictoryChart
-                    width={CHART_WIDTH}
-                    height={200}
-                    theme={customTheme}
-                    padding={{ top: 20, bottom: 40, left: 60, right: 20 }}
-                  >
+                  <VictoryChart width={CHART_WIDTH} height={200} theme={customTheme} padding={{ top: 20, bottom: 40, left: 60, right: 20 }}>
                     <VictoryAxis tickFormat={() => ''} />
                     <VictoryAxis dependentAxis tickFormat={v => `${Math.round(v / 1000)}k`} />
-                    <VictoryLine
-                      data={xpChartData}
-                      style={{ data: { stroke: colors.gold, strokeWidth: 2 } }}
-                    />
+                    <VictoryLine data={xpChartData} style={{ data: { stroke: colors.gold, strokeWidth: 2 } }} />
                   </VictoryChart>
                 </SystemPanel>
               )}
             </>
           )}
 
-          {/* WORKOUTS TAB */}
           {tab === 'workouts' && (
             <>
               {history.length === 0 ? (
@@ -229,9 +150,7 @@ export default function ProgressScreen({ navigation }) {
                   <Text style={styles.noDataText}>No workout history yet. Complete your first session.</Text>
                 </SystemPanel>
               ) : (
-                history.slice(0, 20).map((w, i) => (
-                  <WorkoutHistoryItem key={w.id || i} workout={w} />
-                ))
+                history.slice(0, 30).map((w, i) => <WorkoutHistoryItem key={w.id || i} workout={w} />)
               )}
             </>
           )}
@@ -242,21 +161,47 @@ export default function ProgressScreen({ navigation }) {
 }
 
 function WorkoutHistoryItem({ workout }) {
+  const [expanded, setExpanded] = useState(false);
   const date = new Date(workout.date);
   const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  const totalSets = workout.exercises?.reduce((acc, e) => {
+    const sets = e.sets;
+    return acc + (Array.isArray(sets) ? sets.length : 0);
+  }, 0) || 0;
 
   return (
-    <View style={styles.historyItem}>
-      <View style={styles.historyLeft}>
-        <Text style={styles.historyName}>{workout.name}</Text>
-        <Text style={styles.historyMeta}>
-          {dateStr} · {workout.duration}min · {workout.exercises?.length || 0} exercises
-        </Text>
-      </View>
-      <View style={styles.historyRight}>
-        <Text style={styles.historyXP}>+{workout.xpGained}</Text>
-        <Text style={styles.historyXPLabel}>XP</Text>
-      </View>
+    <View style={[styles.historyItem, expanded && styles.historyItemOpen]}>
+      <TouchableOpacity style={styles.historyHeader} onPress={() => setExpanded(e => !e)} activeOpacity={0.7}>
+        <View style={styles.historyLeft}>
+          <Text style={styles.historyName}>{workout.name}</Text>
+          <Text style={styles.historyMeta}>{dateStr} · {workout.duration}min{totalSets > 0 ? ` · ${totalSets} sets` : ''}</Text>
+        </View>
+        <View style={styles.historyRight}>
+          <Text style={styles.historyXP}>+{workout.xpGained}</Text>
+          <Text style={styles.historyXPLabel}>XP</Text>
+          <Text style={styles.chevron}>{expanded ? '▲' : '▼'}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.historyDetail}>
+          {workout.exercises?.map((ex, i) => {
+            const sets = Array.isArray(ex.sets) ? ex.sets.filter(s => s.reps > 0) : [];
+            if (sets.length === 0) return null;
+            const isTime = ex.unit === 'seconds' || ex.unit === 'minutes';
+            return (
+              <View key={i} style={styles.historyExBlock}>
+                <Text style={styles.historyExName}>{ex.name}</Text>
+                {sets.map((st, j) => (
+                  <Text key={j} style={styles.historySetLine}>
+                    {j + 1}.{st.weight > 0 ? ` ${st.weight}kg ×` : ''} {st.reps} {isTime ? ex.unit : 'reps'} @ RPE {st.rpe}
+                  </Text>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -285,7 +230,6 @@ const styles = StyleSheet.create({
 
   chartPanel: { marginBottom: 12, overflow: 'hidden', padding: 12 },
   chartTitle: { fontFamily: 'Rajdhani_700Bold', fontSize: 11, letterSpacing: 2.5, marginBottom: 4 },
-
   noDataPanel: { marginBottom: 12, alignItems: 'center' },
   noDataText: { fontFamily: 'Rajdhani_400Regular', fontSize: 13, color: colors.textDim, textAlign: 'center', letterSpacing: 0.5, lineHeight: 20 },
 
@@ -297,17 +241,19 @@ const styles = StyleSheet.create({
   statFill: { height: '100%', borderRadius: 2 },
   statVal: { fontFamily: 'Rajdhani_700Bold', fontSize: 14, width: 36, textAlign: 'right' },
 
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  historyItem: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  historyItemOpen: { borderBottomColor: colors.electricBlue + '44' },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   historyLeft: { flex: 1 },
   historyName: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 15, color: colors.textPrimary, letterSpacing: 0.5 },
   historyMeta: { fontFamily: 'Rajdhani_400Regular', fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  historyRight: { alignItems: 'center', minWidth: 40 },
+  historyRight: { alignItems: 'center', gap: 2 },
   historyXP: { fontFamily: 'Rajdhani_700Bold', fontSize: 18, color: colors.gold },
   historyXPLabel: { fontFamily: 'Rajdhani_500Medium', fontSize: 9, color: colors.gold + 'aa', letterSpacing: 1 },
+  chevron: { fontFamily: 'Rajdhani_500Medium', fontSize: 10, color: colors.textDim, marginTop: 2 },
+
+  historyDetail: { paddingBottom: 12, paddingLeft: 4 },
+  historyExBlock: { marginBottom: 10 },
+  historyExName: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 13, color: colors.textAccent, letterSpacing: 0.5, marginBottom: 4 },
+  historySetLine: { fontFamily: 'Rajdhani_400Regular', fontSize: 12, color: colors.textSecondary, letterSpacing: 0.3, marginBottom: 2, paddingLeft: 8 },
 });
