@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +30,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   const { workout } = route.params;
   const exercises = workout.exercises || [];
 
-  const [phase, setPhase] = useState('ready'); // ready | active | rest | complete
+  const [phase, setPhase] = useState('ready');
   const [currentExIdx, setCurrentExIdx] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [rpeValue, setRpeValue] = useState(5);
@@ -47,31 +48,71 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Timestamp refs so timers survive backgrounding
+  const workoutStartTsRef = useRef(null);
+  const restEndsAtRef = useRef(null);
+  const phaseRef = useRef('ready');
+
   const currentEx = exercises[currentExIdx];
+
+  // Keep phaseRef in sync
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
-  // Elapsed timer
+  // Re-sync timers when app returns to foreground
   useEffect(() => {
-    if (phase === 'active') {
+    const sub = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') return;
+      if (phaseRef.current === 'active' || phaseRef.current === 'rest') {
+        if (workoutStartTsRef.current) {
+          setElapsedSeconds(Math.floor((Date.now() - workoutStartTsRef.current) / 1000));
+        }
+      }
+      if (phaseRef.current === 'rest' && restEndsAtRef.current) {
+        const remaining = Math.max(0, Math.floor((restEndsAtRef.current - Date.now()) / 1000));
+        setRestTimer(remaining);
+        if (remaining === 0) setPhase('active');
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Elapsed timer — derives value from start timestamp
+  useEffect(() => {
+    if (phase === 'active' || phase === 'rest') {
       timerRef.current = setInterval(() => {
-        setElapsedSeconds(s => s + 1);
+        if (workoutStartTsRef.current) {
+          setElapsedSeconds(Math.floor((Date.now() - workoutStartTsRef.current) / 1000));
+        }
       }, 1000);
+    } else {
+      clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
-  // Rest countdown
+  // Rest countdown — derives value from end timestamp
   useEffect(() => {
-    if (phase === 'rest' && restTimer > 0) {
-      restRef.current = setTimeout(() => setRestTimer(t => t - 1), 1000);
-    } else if (phase === 'rest' && restTimer === 0) {
-      setPhase('active');
+    if (phase === 'rest') {
+      restRef.current = setInterval(() => {
+        if (!restEndsAtRef.current) return;
+        const remaining = Math.max(0, Math.floor((restEndsAtRef.current - Date.now()) / 1000));
+        setRestTimer(remaining);
+        if (remaining === 0) {
+          clearInterval(restRef.current);
+          setPhase('active');
+        }
+      }, 500);
+    } else {
+      clearInterval(restRef.current);
     }
-    return () => clearTimeout(restRef.current);
-  }, [phase, restTimer]);
+    return () => clearInterval(restRef.current);
+  }, [phase]);
 
   // Pulse animation for rest
   useEffect(() => {
@@ -88,19 +129,23 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   }, [phase]);
 
   function startWorkout() {
+    workoutStartTsRef.current = Date.now();
     setPhase('active');
     setRepCount(currentEx?.reps || 0);
+  }
+
+  function beginRest(duration) {
+    restEndsAtRef.current = Date.now() + duration * 1000;
+    setRestTimer(duration);
+    setPhase('rest');
   }
 
   function completeSet() {
     const ex = currentEx;
     if (currentSet < ex.sets) {
-      // More sets — go to rest
       setCurrentSet(s => s + 1);
-      setRestTimer(ex.rest || 60);
-      setPhase('rest');
+      beginRest(ex.rest || 60);
     } else {
-      // Exercise done
       const done = [...completedExercises, { ...ex, rpe: rpeValue, notes }];
       setCompletedExercises(done);
       setNotes('');
@@ -111,8 +156,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
         setCurrentExIdx(i => i + 1);
         const nextEx = exercises[currentExIdx + 1];
         setRepCount(nextEx?.reps || 0);
-        setRestTimer(ex.rest || 60);
-        setPhase('rest');
+        beginRest(ex.rest || 60);
       } else {
         finishWorkout(done);
       }
@@ -122,8 +166,14 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   async function finishWorkout(done) {
     setPhase('complete');
     clearInterval(timerRef.current);
+    clearInterval(restRef.current);
 
-    const durationMin = Math.floor(elapsedSeconds / 60);
+    const actualElapsed = workoutStartTsRef.current
+      ? Math.floor((Date.now() - workoutStartTsRef.current) / 1000)
+      : elapsedSeconds;
+    setElapsedSeconds(actualElapsed);
+
+    const durationMin = Math.floor(actualElapsed / 60);
     const xp = calcXPForWorkout(done, durationMin);
     setXpGained(xp);
 
@@ -135,7 +185,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
     profile.totalWorkouts += 1;
     profile.lastWorkoutDate = new Date().toISOString();
 
-    // Update streak
     const today = new Date().toDateString();
     const lastDate = profile.lastWorkoutDate ? new Date(profile.lastWorkoutDate).toDateString() : null;
     if (lastDate !== today) {
@@ -148,7 +197,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
       }
     }
 
-    // Stat gains based on workout category
     const gains = calcStatGains(workout.category || 'strength', 1);
     for (const [stat, val] of Object.entries(gains)) {
       if (profile.stats[stat] !== undefined) profile.stats[stat] += val;
@@ -272,6 +320,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
       <LinearGradient colors={[colors.background, colors.deepBlue, colors.background]} style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <View style={styles.restContainer}>
+            <Text style={styles.elapsedSmall}>{formatTime(elapsedSeconds)}</Text>
             <Text style={styles.restLabel}>REST</Text>
             <Animated.Text style={[styles.restTimer, { transform: [{ scale: pulseAnim }] }]}>
               {formatTime(restTimer)}
@@ -279,7 +328,11 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             <Text style={styles.restNext}>
               NEXT: {currentEx?.name} — SET {currentSet}/{currentEx?.sets}
             </Text>
-            <TouchableOpacity style={styles.skipBtn} onPress={() => { setRestTimer(0); setPhase('active'); }}>
+            <TouchableOpacity style={styles.skipBtn} onPress={() => {
+              restEndsAtRef.current = Date.now();
+              setRestTimer(0);
+              setPhase('active');
+            }}>
               <Text style={styles.skipText}>SKIP REST</Text>
             </TouchableOpacity>
           </View>
@@ -296,7 +349,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   return (
     <LinearGradient colors={[colors.background, colors.darkPurple + '55', colors.background]} style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Header */}
         <View style={styles.activeHeader}>
           <Text style={styles.elapsedTimer}>{formatTime(elapsedSeconds)}</Text>
           <Text style={styles.progressText}>{currentExIdx + 1}/{exercises.length}</Text>
@@ -309,13 +361,10 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
         </View>
 
         <ScrollView contentContainerStyle={styles.activeScroll}>
-          {/* Current Exercise */}
           <SystemPanel glow style={styles.exercisePanel}>
             <Text style={styles.exSetLabel}>SET {currentSet} OF {currentEx.sets}</Text>
             <Text style={styles.exName}>{currentEx.name}</Text>
             <Text style={styles.exTarget}>{currentEx.reps} {currentEx.unit}</Text>
-
-            {/* Set progress dots */}
             <View style={styles.setDots}>
               {Array.from({ length: currentEx.sets }).map((_, i) => (
                 <View
@@ -330,7 +379,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             </View>
           </SystemPanel>
 
-          {/* RPE Slider */}
           <SystemPanel style={styles.rpePanel}>
             <Text style={styles.fieldLabel}>RPE — RATE OF PERCEIVED EXERTION</Text>
             <View style={styles.rpeRow}>
@@ -351,7 +399,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             </Text>
           </SystemPanel>
 
-          {/* Notes */}
           <SystemPanel style={styles.notesPanel}>
             <Text style={styles.fieldLabel}>NOTES</Text>
             <TextInput
@@ -364,7 +411,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             />
           </SystemPanel>
 
-          {/* Upcoming */}
           {currentExIdx < exercises.length - 1 && (
             <View style={styles.nextExBox}>
               <Text style={styles.nextExLabel}>NEXT:</Text>
@@ -373,7 +419,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
           )}
         </ScrollView>
 
-        {/* Complete Set Button */}
         <TouchableOpacity style={styles.completeSetBtn} onPress={completeSet} activeOpacity={0.85}>
           <LinearGradient colors={[colors.electricBlue, colors.glowPurple]} style={styles.completeSetGrad}>
             <Text style={styles.completeSetText}>
@@ -394,7 +439,6 @@ const styles = StyleSheet.create({
   backBtn: { padding: 16, paddingBottom: 8 },
   backText: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 13, color: colors.danger, letterSpacing: 2 },
 
-  // Ready
   readyContainer: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 20 },
   systemInit: { fontFamily: 'Rajdhani_500Medium', fontSize: 11, color: colors.electricBlue, letterSpacing: 3, marginBottom: 16 },
   workoutName: { fontFamily: 'Rajdhani_700Bold', fontSize: 28, color: colors.textPrimary, textAlign: 'center', letterSpacing: 2, marginBottom: 8 },
@@ -405,7 +449,6 @@ const styles = StyleSheet.create({
   startGrad: { padding: 18, alignItems: 'center' },
   startText: { fontFamily: 'Rajdhani_700Bold', fontSize: 18, color: colors.textPrimary, letterSpacing: 4 },
 
-  // Active
   activeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 8 },
   elapsedTimer: { fontFamily: 'Rajdhani_700Bold', fontSize: 20, color: colors.textPrimary, letterSpacing: 2 },
   progressText: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 16, color: colors.textSecondary, letterSpacing: 1 },
@@ -436,26 +479,18 @@ const styles = StyleSheet.create({
   nextExLabel: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 12, color: colors.textSecondary, letterSpacing: 1 },
   nextExName: { fontFamily: 'Rajdhani_500Medium', fontSize: 14, color: colors.textPrimary },
 
-  completeSetBtn: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderRadius: 0,
-    overflow: 'hidden',
-  },
+  completeSetBtn: { position: 'absolute', bottom: 0, left: 0, right: 0, borderRadius: 0, overflow: 'hidden' },
   completeSetGrad: { padding: 20, alignItems: 'center' },
   completeSetText: { fontFamily: 'Rajdhani_700Bold', fontSize: 18, color: colors.textPrimary, letterSpacing: 3 },
 
-  // Rest
   restContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  elapsedSmall: { fontFamily: 'Rajdhani_500Medium', fontSize: 14, color: colors.textDim, letterSpacing: 2, marginBottom: 8 },
   restLabel: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 14, color: colors.textSecondary, letterSpacing: 4, marginBottom: 16 },
   restTimer: { fontFamily: 'Rajdhani_700Bold', fontSize: 80, color: colors.electricBlue, letterSpacing: 4 },
   restNext: { fontFamily: 'Rajdhani_500Medium', fontSize: 14, color: colors.textSecondary, letterSpacing: 1, marginTop: 24, textAlign: 'center', paddingHorizontal: 40 },
   skipBtn: { marginTop: 40, paddingHorizontal: 24, paddingVertical: 12, borderWidth: 1, borderColor: colors.textDim, borderRadius: 2 },
   skipText: { fontFamily: 'Rajdhani_600SemiBold', fontSize: 14, color: colors.textSecondary, letterSpacing: 2 },
 
-  // Complete
   completeScroll: { padding: 20, paddingTop: 40, alignItems: 'center' },
   completeTag: { fontFamily: 'Rajdhani_500Medium', fontSize: 11, color: colors.success, letterSpacing: 3, marginBottom: 24 },
   completePanel: { width: '100%', alignItems: 'center', marginBottom: 16 },
