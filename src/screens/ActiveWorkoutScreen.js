@@ -11,6 +11,7 @@ import {
   Dimensions,
   AppState,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, rankColors } from '../theme/colors';
@@ -23,6 +24,7 @@ import {
 } from '../utils/storage';
 import { calcXPForWorkout, calcStatGains, checkRankUp, getRankForXP } from '../utils/xpSystem';
 import { getRandomQuote } from '../utils/workoutData';
+import { scheduleRestEndNotification, cancelRestEndNotification } from '../utils/notifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,42 +49,42 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   const restRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const flashAnim = useRef(new Animated.Value(0)).current;
 
-  // Timestamp refs so timers survive backgrounding
   const workoutStartTsRef = useRef(null);
   const restEndsAtRef = useRef(null);
   const phaseRef = useRef('ready');
 
   const currentEx = exercises[currentExIdx];
 
-  // Keep phaseRef in sync
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    return () => { cancelRestEndNotification(); };
   }, []);
 
   // Re-sync timers when app returns to foreground
   useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
       if (nextState !== 'active') return;
-      if (phaseRef.current === 'active' || phaseRef.current === 'rest') {
-        if (workoutStartTsRef.current) {
-          setElapsedSeconds(Math.floor((Date.now() - workoutStartTsRef.current) / 1000));
-        }
+      if ((phaseRef.current === 'active' || phaseRef.current === 'rest') && workoutStartTsRef.current) {
+        setElapsedSeconds(Math.floor((Date.now() - workoutStartTsRef.current) / 1000));
       }
       if (phaseRef.current === 'rest' && restEndsAtRef.current) {
         const remaining = Math.max(0, Math.floor((restEndsAtRef.current - Date.now()) / 1000));
         setRestTimer(remaining);
-        if (remaining === 0) setPhase('active');
+        if (remaining === 0) {
+          cancelRestEndNotification();
+          triggerRestEndAlert();
+          setPhase('active');
+        }
       }
     });
     return () => sub.remove();
   }, []);
 
-  // Elapsed timer — derives value from start timestamp
+  // Elapsed timer
   useEffect(() => {
     if (phase === 'active' || phase === 'rest') {
       timerRef.current = setInterval(() => {
@@ -96,7 +98,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
-  // Rest countdown — derives value from end timestamp
+  // Rest countdown
   useEffect(() => {
     if (phase === 'rest') {
       restRef.current = setInterval(() => {
@@ -105,6 +107,8 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
         setRestTimer(remaining);
         if (remaining === 0) {
           clearInterval(restRef.current);
+          cancelRestEndNotification();
+          triggerRestEndAlert();
           setPhase('active');
         }
       }, 500);
@@ -128,6 +132,16 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
     }
   }, [phase]);
 
+  function triggerRestEndAlert() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }
+
   function startWorkout() {
     workoutStartTsRef.current = Date.now();
     setPhase('active');
@@ -137,7 +151,15 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   function beginRest(duration) {
     restEndsAtRef.current = Date.now() + duration * 1000;
     setRestTimer(duration);
+    scheduleRestEndNotification(duration);
     setPhase('rest');
+  }
+
+  function skipRest() {
+    cancelRestEndNotification();
+    restEndsAtRef.current = Date.now();
+    setRestTimer(0);
+    setPhase('active');
   }
 
   function completeSet() {
@@ -164,6 +186,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
   }
 
   async function finishWorkout(done) {
+    cancelRestEndNotification();
     setPhase('complete');
     clearInterval(timerRef.current);
     clearInterval(restRef.current);
@@ -215,9 +238,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
     });
     await recordWeeklySnapshot(profile);
 
-    if (rankCheck.didRankUp) {
-      setNewRank(rankCheck.newRank);
-    }
+    if (rankCheck.didRankUp) setNewRank(rankCheck.newRank);
   }
 
   function formatTime(secs) {
@@ -264,7 +285,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={styles.completeScroll}>
             <Text style={styles.completeTag}>[ PROTOCOL COMPLETE ]</Text>
-
             <SystemPanel glow style={styles.completePanel}>
               <Text style={styles.xpGained}>+{xpGained} XP</Text>
               <Text style={styles.xpLabel}>EXPERIENCE GAINED</Text>
@@ -285,24 +305,18 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
                 </View>
               </View>
             </SystemPanel>
-
             {newRank && (
               <SystemPanel glow style={[styles.rankUpPanel, { borderColor: rankColor }]}>
                 <Text style={[styles.rankUpText, { color: rankColor }]}>🏆 RANK UP — {newRank} CLASS</Text>
                 <Text style={styles.rankUpSub}>The System acknowledges your ascent.</Text>
               </SystemPanel>
             )}
-
             <View style={styles.quoteBox}>
               <Text style={styles.quoteText}>{finaleQuote}</Text>
             </View>
-
             <TouchableOpacity style={styles.doneBtn} onPress={() => {
-              if (newRank) {
-                navigation.navigate('RankUp', { newRank });
-              } else {
-                navigation.navigate('HomeDashboard');
-              }
+              if (newRank) navigation.navigate('RankUp', { newRank });
+              else navigation.navigate('HomeDashboard');
             }}>
               <LinearGradient colors={[colors.electricBlue, colors.glowPurple]} style={styles.startGrad}>
                 <Text style={styles.startText}>{newRank ? 'WITNESS YOUR RANK' : 'RETURN TO BASE'}</Text>
@@ -319,6 +333,8 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
     return (
       <LinearGradient colors={[colors.background, colors.deepBlue, colors.background]} style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          {/* Flash overlay */}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.electricBlue, opacity: flashAnim }]} />
           <View style={styles.restContainer}>
             <Text style={styles.elapsedSmall}>{formatTime(elapsedSeconds)}</Text>
             <Text style={styles.restLabel}>REST</Text>
@@ -328,11 +344,7 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             <Text style={styles.restNext}>
               NEXT: {currentEx?.name} — SET {currentSet}/{currentEx?.sets}
             </Text>
-            <TouchableOpacity style={styles.skipBtn} onPress={() => {
-              restEndsAtRef.current = Date.now();
-              setRestTimer(0);
-              setPhase('active');
-            }}>
+            <TouchableOpacity style={styles.skipBtn} onPress={skipRest}>
               <Text style={styles.skipText}>SKIP REST</Text>
             </TouchableOpacity>
           </View>
@@ -343,8 +355,6 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
 
   // === PHASE: ACTIVE ===
   if (!currentEx) return null;
-
-  const setProgress = currentSet / currentEx.sets;
 
   return (
     <LinearGradient colors={[colors.background, colors.darkPurple + '55', colors.background]} style={styles.root}>
@@ -367,14 +377,11 @@ export default function ActiveWorkoutScreen({ navigation, route }) {
             <Text style={styles.exTarget}>{currentEx.reps} {currentEx.unit}</Text>
             <View style={styles.setDots}>
               {Array.from({ length: currentEx.sets }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.setDot,
-                    i < currentSet - 1 && styles.setDotDone,
-                    i === currentSet - 1 && styles.setDotActive,
-                  ]}
-                />
+                <View key={i} style={[
+                  styles.setDot,
+                  i < currentSet - 1 && styles.setDotDone,
+                  i === currentSet - 1 && styles.setDotActive,
+                ]} />
               ))}
             </View>
           </SystemPanel>

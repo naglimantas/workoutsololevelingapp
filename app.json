@@ -22,7 +22,14 @@
       "package": "com.shadowmonarch.hunter"
     },
     "plugins": [
-      "./plugins/withKotlinVersion"
+      "./plugins/withKotlinVersion",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#3300ff"
+        }
+      ]
     ]
   }
 }
