@@ -1,9 +1,53 @@
-// Push notifications disabled — not supported in standalone builds without extra config
-export async function requestNotificationPermissions() { return false; }
-export async function scheduleDailyQuestReminder() {}
-export async function scheduleMidnightCheck() {}
-export async function scheduleWeeklyBossNotification() {}
-export async function sendRankUpNotification() {}
-export async function sendQuestCompleteNotification() {}
-export async function initNotifications() { return false; }
-export async function cancelAllNotifications() {}
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+let restNotificationId = null;
+
+export async function initNotifications() {
+  try {
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+export async function scheduleRestEndNotification(secondsUntil) {
+  try {
+    await cancelRestEndNotification();
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⚔ REST COMPLETE',
+        body: 'Time to get back to work, Hunter.',
+        sound: true,
+      },
+      trigger: { seconds: Math.max(1, secondsUntil) },
+    });
+    restNotificationId = id;
+  } catch {
+    // Notifications not granted or unavailable
+  }
+}
+
+export async function cancelRestEndNotification() {
+  if (restNotificationId) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(restNotificationId);
+    } catch {}
+    restNotificationId = null;
+  }
+}
+
+export async function cancelAllNotifications() {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {}
+  restNotificationId = null;
+}

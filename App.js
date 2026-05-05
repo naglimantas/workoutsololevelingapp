@@ -60,7 +60,7 @@ export default function App() {
 
   return (
     <View style={styles.root} onLayout={onLayoutRootView}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <AppNavigator isNewUser={isNewUser} />
     </View>
   );
