@@ -28,7 +28,7 @@ export async function scheduleRestEndNotification(secondsUntil) {
         body: 'Time to get back to work, Hunter.',
         sound: true,
       },
-      trigger: { seconds: Math.max(1, secondsUntil) },
+      trigger: { seconds: Math.max(1, secondsUntil), repeats: false },
     });
     restNotificationId = id;
   } catch {
