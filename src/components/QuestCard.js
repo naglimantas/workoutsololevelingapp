@@ -64,14 +64,16 @@ export default function QuestCard({ quest, onToggle, onLongPress, onProgressUpda
                 isPenalty && { color: colors.penalty },
               ]}
             >
-              {quest.name}
+              {quest.isCustom
+                ? <><Text style={styles.nameAmount}>{quest.target} {quest.unit} </Text>{quest.name}</>
+                : quest.name}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.target}>
-              {quest.target} {quest.unit}
-            </Text>
+            {!quest.isCustom && (
+              <Text style={styles.target}>{quest.target} {quest.unit}</Text>
+            )}
             <Text style={[styles.xp, { color: colors.gold }]}>+{quest.xp} XP</Text>
           </View>
 
@@ -148,6 +150,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: 0.5,
     flex: 1,
+  },
+  nameAmount: {
+    fontFamily: 'Rajdhani_700Bold',
+    fontSize: 16,
+    color: colors.electricBlue,
   },
   completedText: {
     color: colors.textSecondary,
