@@ -58,6 +58,8 @@ export default function BossBattleScreen({ navigation }) {
     setBossDataState(data);
   }
 
+  const glowLoopRef = useRef(null);
+
   useEffect(() => {
     if (phase === 'battle') {
       timerRef.current = setInterval(() => {
@@ -70,15 +72,18 @@ export default function BossBattleScreen({ navigation }) {
         });
       }, 1000);
 
-      // Glow loop
-      Animated.loop(
+      glowLoopRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
           Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
         ])
-      ).start();
+      );
+      glowLoopRef.current.start();
     }
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearInterval(timerRef.current);
+      if (glowLoopRef.current) glowLoopRef.current.stop();
+    };
   }, [phase]);
 
   function shakeEffect() {
@@ -98,7 +103,8 @@ export default function BossBattleScreen({ navigation }) {
     shakeEffect();
 
     // Damage boss
-    const damagePerRep = boss.bossHP / boss.exercises.reduce((acc, ex) => acc + ex.totalReps, 0);
+    const totalReps = boss.exercises.reduce((acc, ex) => acc + ex.totalReps, 0);
+    const damagePerRep = totalReps > 0 ? boss.bossHP / totalReps : 0;
     const newHP = Math.max(0, currentHP - damagePerRep);
     setCurrentHP(newHP);
 

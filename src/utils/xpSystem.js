@@ -29,6 +29,7 @@ export const STAT_REWARDS = {
   cardio: { agility: 3, endurance: 2 },
   endurance: { endurance: 4, vitality: 1 },
   flexibility: { agility: 2, vitality: 2 },
+  hypertrophy: { strength: 4, endurance: 1 },
   rest: { vitality: 3 },
   quest: { intelligence: 2 },
 };

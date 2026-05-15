@@ -51,3 +51,16 @@ export async function cancelAllNotifications() {
   } catch {}
   restNotificationId = null;
 }
+
+export async function sendRankUpNotification(newRank) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⚔ RANK UP',
+        body: `You have ascended to ${newRank} Class. The System acknowledges your power.`,
+        sound: true,
+      },
+      trigger: null,
+    });
+  } catch {}
+}

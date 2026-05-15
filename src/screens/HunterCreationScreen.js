@@ -64,13 +64,14 @@ export default function HunterCreationScreen({ navigation }) {
     const err = validate();
     if (err) { setError(err); return; }
     setError('');
-
-    const profile = createDefaultProfile({ name: name.trim(), age, bodyWeight, fitnessLevel });
-    await saveHunterProfile(profile);
-    await initNotifications();
-
-    // Transition to home
-    navigation.replace('HomeDashboard');
+    try {
+      const profile = createDefaultProfile({ name: name.trim(), age, bodyWeight, fitnessLevel });
+      await saveHunterProfile(profile);
+      await initNotifications();
+      navigation.replace('HomeDashboard');
+    } catch {
+      setError('Failed to create profile. Please try again.');
+    }
   }
 
   return (
