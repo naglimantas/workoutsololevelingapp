@@ -29,6 +29,7 @@ export const STAT_REWARDS = {
   cardio: { agility: 3, endurance: 2 },
   endurance: { endurance: 4, vitality: 1 },
   flexibility: { agility: 2, vitality: 2 },
+  hypertrophy: { strength: 4, endurance: 1 },
   rest: { vitality: 3 },
   quest: { intelligence: 2 },
 };
@@ -94,7 +95,7 @@ export const RANK_MESSAGES = {
   D: 'The System has acknowledged your effort. A new designation has been bestowed.',
   C: 'You have surpassed the average. The shadows grow deeper around you.',
   B: 'Only the elite walk this path. The System watches you closely.',
-  A: 'You stand among the chosen few. The Monarch\'s power stirs within.',
+  A: "You stand among the chosen few. The Monarch's power stirs within.",
   S: 'You have ascended. The Shadow Monarch acknowledges your dominion.',
   National: 'You walk among the National Level Hunters. Nations bow before your strength.',
   Monarch: 'You have transcended mortal limits. The throne of a Monarch is yours.',
