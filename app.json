@@ -19,7 +19,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#05050c"
       },
-      "package": "com.shadowmonarch.hunter"
+      "package": "com.shadowmonarch.hunter",
+      "navigationBar": {
+        "backgroundColor": "#05050c",
+        "barStyle": "light-content"
+      }
     },
     "plugins": [
       "./plugins/withKotlinVersion",
