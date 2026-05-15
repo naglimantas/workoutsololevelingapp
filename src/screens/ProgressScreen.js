@@ -10,15 +10,67 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { VictoryChart, VictoryLine, VictoryAxis, VictoryTheme } from 'victory-native';
-import { colors, statColors, rankColors } from '../theme/colors';
+import Svg, { Polyline, Line, Text as SvgText } from 'react-native-svg';
+import { colors, statColors } from '../theme/colors';
 import SystemPanel from '../components/SystemPanel';
 import { getHunterProfile, getWorkoutHistory, getWeeklyStats } from '../utils/storage';
 import { getLevelFromXP } from '../utils/xpSystem';
 
 const { width } = Dimensions.get('window');
 const CHART_WIDTH = width - 64;
+const CHART_HEIGHT = 200;
 const STAT_NAMES = ['strength', 'agility', 'endurance', 'intelligence', 'vitality'];
+
+function MiniLineChart({ data, color, formatY }) {
+  const pad = { top: 12, bottom: 28, left: 48, right: 10 };
+  const w = CHART_WIDTH - pad.left - pad.right;
+  const h = CHART_HEIGHT - pad.top - pad.bottom;
+
+  const yValues = data.map(d => d.y);
+  const minY = Math.min(...yValues);
+  const maxY = Math.max(...yValues);
+  const yRange = maxY - minY || 1;
+
+  const points = data
+    .map((d, i) => {
+      const x = pad.left + (i / Math.max(data.length - 1, 1)) * w;
+      const y = pad.top + ((maxY - d.y) / yRange) * h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  const yTicks = [maxY, (maxY + minY) / 2, minY];
+
+  return (
+    <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+      {yTicks.map((val, i) => {
+        const y = pad.top + (i / 2) * h;
+        return (
+          <React.Fragment key={i}>
+            <Line
+              x1={pad.left} y1={y}
+              x2={pad.left + w} y2={y}
+              stroke={colors.border + '55'} strokeWidth={1}
+            />
+            <SvgText
+              x={pad.left - 4} y={y + 4}
+              textAnchor="end" fontSize={9}
+              fill={colors.textDim}
+            >
+              {formatY ? formatY(val) : Math.round(val)}
+            </SvgText>
+          </React.Fragment>
+        );
+      })}
+      <Line
+        x1={pad.left} y1={pad.top + h}
+        x2={pad.left + w} y2={pad.top + h}
+        stroke={colors.border} strokeWidth={1}
+      />
+      <Polyline points={points} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 export default function ProgressScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -37,22 +89,11 @@ export default function ProgressScreen({ navigation }) {
   if (!profile) return null;
 
   const level = getLevelFromXP(profile.xp);
-  const statChartData = weeklyStats.slice(-14).map((snap, i) => ({ x: i + 1, y: snap.stats?.[selectedStat] || 0 }));
-  const xpChartData = weeklyStats.slice(-14).map((snap, i) => ({ x: i + 1, y: snap.xp || 0 }));
+  const snapshots = weeklyStats.slice(-14);
+  const statChartData = snapshots.map((snap, i) => ({ x: i + 1, y: snap.stats?.[selectedStat] || 0 }));
+  const xpChartData = snapshots.map((snap, i) => ({ x: i + 1, y: snap.xp || 0 }));
   const last7 = history.filter(w => new Date(w.date) > new Date(Date.now() - 7 * 86400000)).length;
-
-  const customTheme = {
-    ...VictoryTheme.material,
-    axis: {
-      ...VictoryTheme.material.axis,
-      style: {
-        ...VictoryTheme.material.axis?.style,
-        axis: { stroke: colors.border },
-        tickLabels: { fill: colors.textDim, fontFamily: 'Rajdhani_400Regular', fontSize: 10 },
-        grid: { stroke: colors.border + '44' },
-      },
-    },
-  };
+  const hasChart = snapshots.length >= 2;
 
   return (
     <LinearGradient colors={[colors.background, colors.darkPurple + '44', colors.background]} style={styles.root}>
@@ -93,21 +134,21 @@ export default function ProgressScreen({ navigation }) {
                 {STAT_NAMES.map(s => {
                   const sc = statColors[s];
                   return (
-                    <TouchableOpacity key={s} style={[styles.statChip, selectedStat === s && { borderColor: sc, backgroundColor: sc + '22' }]} onPress={() => setSelectedStat(s)}>
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.statChip, selectedStat === s && { borderColor: sc, backgroundColor: sc + '22' }]}
+                      onPress={() => setSelectedStat(s)}
+                    >
                       <Text style={[styles.statChipText, selectedStat === s && { color: sc }]}>{s.toUpperCase()}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
 
-              {weeklyStats.length >= 2 ? (
+              {hasChart ? (
                 <SystemPanel style={styles.chartPanel} noPad>
                   <Text style={[styles.chartTitle, { color: statColors[selectedStat] }]}>{selectedStat.toUpperCase()} OVER TIME</Text>
-                  <VictoryChart width={CHART_WIDTH} height={200} theme={customTheme} padding={{ top: 20, bottom: 40, left: 50, right: 20 }}>
-                    <VictoryAxis tickFormat={() => ''} />
-                    <VictoryAxis dependentAxis />
-                    <VictoryLine data={statChartData} style={{ data: { stroke: statColors[selectedStat], strokeWidth: 2 } }} animate={{ duration: 500 }} />
-                  </VictoryChart>
+                  <MiniLineChart data={statChartData} color={statColors[selectedStat]} />
                 </SystemPanel>
               ) : (
                 <SystemPanel style={styles.noDataPanel}>
@@ -123,21 +164,23 @@ export default function ProgressScreen({ navigation }) {
                   return (
                     <View key={s} style={styles.statRow}>
                       <Text style={[styles.statName, { color: sc }]}>{s.toUpperCase()}</Text>
-                      <View style={styles.statTrack}><View style={[styles.statFill, { width: `${Math.min(val / 500 * 100, 100)}%`, backgroundColor: sc }]} /></View>
+                      <View style={styles.statTrack}>
+                        <View style={[styles.statFill, { width: `${Math.min(val / 500 * 100, 100)}%`, backgroundColor: sc }]} />
+                      </View>
                       <Text style={[styles.statVal, { color: sc }]}>{val}</Text>
                     </View>
                   );
                 })}
               </SystemPanel>
 
-              {weeklyStats.length >= 2 && (
+              {hasChart && (
                 <SystemPanel style={styles.chartPanel} noPad>
                   <Text style={[styles.chartTitle, { color: colors.gold }]}>XP OVER TIME</Text>
-                  <VictoryChart width={CHART_WIDTH} height={200} theme={customTheme} padding={{ top: 20, bottom: 40, left: 60, right: 20 }}>
-                    <VictoryAxis tickFormat={() => ''} />
-                    <VictoryAxis dependentAxis tickFormat={v => `${Math.round(v / 1000)}k`} />
-                    <VictoryLine data={xpChartData} style={{ data: { stroke: colors.gold, strokeWidth: 2 } }} />
-                  </VictoryChart>
+                  <MiniLineChart
+                    data={xpChartData}
+                    color={colors.gold}
+                    formatY={v => `${Math.round(v / 1000)}k`}
+                  />
                 </SystemPanel>
               )}
             </>
