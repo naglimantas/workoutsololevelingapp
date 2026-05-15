@@ -81,6 +81,7 @@ export const TYPE_ICONS = {
   endurance: '🛡',
   flexibility: '🌀',
   rest: '🌙',
+  other: '⚔️',
 };
 
 export function createCustomQuest({ name, type, target, unit }) {
@@ -107,6 +108,7 @@ export const EXERCISE_TYPES = [
   { label: 'Endurance', value: 'endurance', icon: '🛡' },
   { label: 'Flexibility', value: 'flexibility', icon: '🌀' },
   { label: 'Rest / Recovery', value: 'rest', icon: '🌙' },
+  { label: 'Other', value: 'other', icon: '⚔️' },
 ];
 
 export const UNIT_OPTIONS = ['reps', 'minutes', 'km', 'hours', 'sets'];
