@@ -10,6 +10,10 @@
       "backgroundColor": "#05050c"
     },
     "assetBundlePatterns": ["**/*"],
+    "androidNavigationBar": {
+      "backgroundColor": "#05050c",
+      "barStyle": "light-content"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.shadowmonarch.hunter"
@@ -19,11 +23,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#05050c"
       },
-      "package": "com.shadowmonarch.hunter",
-      "navigationBar": {
-        "backgroundColor": "#05050c",
-        "barStyle": "light-content"
-      }
+      "package": "com.shadowmonarch.hunter"
     },
     "plugins": [
       "./plugins/withKotlinVersion",
